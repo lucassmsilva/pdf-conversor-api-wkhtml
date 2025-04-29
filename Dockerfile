@@ -1,7 +1,10 @@
 # --- Stage 1: Base Runtime with Dependencies ---
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 
-# Install required dependencies for DinkToPdf
+# Configuração para evitar prompts interativos durante a instalação
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Instalar dependências necessárias
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgdiplus \
     libc6-dev \
@@ -17,18 +20,54 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xfonts-base \
     zlib1g \
     ca-certificates \
+    gnupg \
+    software-properties-common \
+    unzip \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Download and install wkhtmltopdf with dependencies for bookworm (Debian 12)
+# Adicionar repositório contrib para fontes Microsoft
+RUN echo "deb http://deb.debian.org/debian/ bookworm main contrib" > /etc/apt/sources.list.d/debian-contrib.list
+
+# Configurar aceitação automática da licença de fontes Microsoft
+RUN echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections
+
+# Atualizar e instalar fontes
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Fontes Microsoft
+    ttf-mscorefonts-installer \
+    # Fontes Google Noto (cobertura ampla de idiomas)
+    fonts-noto \
+    fonts-noto-cjk \
+    fonts-noto-color-emoji \
+    fonts-noto-core \
+    fonts-noto-mono \
+    # Fontes de compatibilidade com o Chrome
+    fonts-liberation \
+    # Fontes adicionais comuns
+    fonts-dejavu \
+    fonts-freefont-ttf \
+    fonts-open-sans \
+    fonts-roboto \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Atualizar cache de fontes
+RUN fc-cache -f -v
+
+# Download e instalação do wkhtmltopdf com dependências para bookworm (Debian 12)
 RUN wget https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-3/wkhtmltox_0.12.6.1-3.bookworm_amd64.deb \
     && dpkg -i wkhtmltox_0.12.6.1-3.bookworm_amd64.deb \
     && rm wkhtmltox_0.12.6.1-3.bookworm_amd64.deb
 
-# Create symbolic links for the libraries
+# Criar links simbólicos para as bibliotecas
 RUN ln -s /usr/lib/libgdiplus.so /lib/x86_64-linux-gnu/libgdiplus.so \
     && ln -s /usr/local/lib/libwkhtmltox.so /usr/lib/libwkhtmltox.so
 
+# Definir diretório de trabalho
 WORKDIR /app
+
+# Expor a porta
 EXPOSE 80
 ENV ASPNETCORE_URLS=http://+:80
 
@@ -51,8 +90,11 @@ RUN dotnet publish "pdf-conversor-api.csproj" -c $configuration -o /app/publish 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-# Copy native libraries to the app directory
+
+# Copiar bibliotecas nativas para o diretório da aplicação (se necessário)
 COPY ["libwkhtmltox.dll", "./"] 
 COPY ["libwkhtmltox.so", "./"]
 COPY ["libwkhtmltox.dylib", "./"]
+
+# Definir o ponto de entrada
 ENTRYPOINT ["dotnet", "pdf-conversor-api.dll"]
