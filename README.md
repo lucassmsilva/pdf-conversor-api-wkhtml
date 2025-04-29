@@ -44,7 +44,7 @@ A API expõe os seguintes endpoints (por padrão na porta 8080 dentro do container
 
 2. **Executar o Container:**
    ```bash
-   docker run -d -p 8081:8080 --name container-pdf api-pdf-wkhtmltopdf:1.0
+   docker run -d -p 8081:80 --name container-pdf api-pdf-wkhtmltopdf:1.0
    ```
    * `-d`: Executa em modo detached (background).
    * `-p 8081:8080`: Mapeia a porta `8081` da sua máquina host para a porta `8080` dentro do container (onde a API escuta por padrão). Você pode alterar a porta do host (`8081`) se necessário.

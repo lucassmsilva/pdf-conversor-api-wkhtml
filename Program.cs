@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json.Serialization;
-using WkHtmlToPdfDotNet.Contracts;
 using WkHtmlToPdfDotNet;
+using WkHtmlToPdfDotNet.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -210,21 +210,23 @@ app.MapPost("/generate-pdf-from-file", async (IFormFile file, IConverter convert
 app.MapGet("/", () => "API de Geração de PDF (v2) está online! Endpoints: POST /generate-pdf-from-body, POST /generate-pdf-from-url, POST /generate-pdf-from-file");
 
 
-app.Use(async (context, next) =>
+if (app.Environment.IsDevelopment())
 {
-    // Verifica se o caminho da requisição é exatamente a raiz "/"
-    if (context.Request.Path == "/")
+    app.Use(async (context, next) =>
     {
-        // Define a resposta como um redirecionamento para a URL do Swagger UI
-        // A URL base é inferida, só precisamos do caminho relativo.
-        context.Response.Redirect("/swagger/index.html"); // Caminho padrão do Swagger UI
-        return; // Importante: Finaliza o processamento desta requisição aqui
-    }
+        // Verifica se o caminho da requisição é exatamente a raiz "/"
+        if (context.Request.Path == "/")
+        {
+            // Define a resposta como um redirecionamento para a URL do Swagger UI
+            // A URL base é inferida, só precisamos do caminho relativo.
+            context.Response.Redirect("/swagger/index.html"); // Caminho padrão do Swagger UI
+            return; // Importante: Finaliza o processamento desta requisição aqui
+        }
 
-    // Se não for a raiz, continua para o próximo middleware ou endpoint
-    await next(context);
-});
-
+        // Se não for a raiz, continua para o próximo middleware ou endpoint
+        await next(context);
+    });
+}
 app.Run();
 
 
